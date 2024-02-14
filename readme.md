@@ -2,15 +2,19 @@
 
 ## How to run the project
 
-### Prerequisites
+### Prerequisites: docker-compose and migrations
 * In the root directory, run `docker-compose up -d`
-* Run docker `exec -it {container_id} bash` to access the mysql container
-* Run `mysql -u root -p` and enter the password (root)
-* Select `orders` database by running `use orders` 
-* Run the following SQL command to create the orders table
-```sql
-CREATE TABLE orders (id varchar(255) NOT NULL, price float NOT NULL, tax float NOT NULL, final_price float NOT NULL, PRIMARY KEY (id))
-```
+* When you run the `main.go` file, the migrations will be executed automatically
+* Will be created a new table called `orders` with the following fields:
+    * `id` - varchar(255)
+    * `price` - double
+    * `tax` - double
+    * `final_price` - double
+* Also, will be created sample data to test the application
+* The sample data is the following:
+![sample data](./assets/sample.png)
+
+
 ## Run the project
 * Go to `cmd/ordersystem` directory 
 * Run `go run main.go wire_gen.go`
