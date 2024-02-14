@@ -12,6 +12,7 @@
     * `final_price` - double
 * Also, will be created sample data to test the application
 * The sample data is the following:
+
 ![sample data](./assets/sample.png)
 
 
