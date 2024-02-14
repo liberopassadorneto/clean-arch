@@ -1,8 +1,9 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
+	"github.com/liberopassadorneto/clean-arch/db_connection"
+	"github.com/liberopassadorneto/clean-arch/migrations"
 	"net"
 	"net/http"
 
@@ -24,16 +25,20 @@ import (
 )
 
 func main() {
-	configs, err := configs.LoadConfig(".")
+	config, err := configs.LoadConfig(".")
 	if err != nil {
 		panic(err)
 	}
 
-	db, err := sql.Open(configs.DBDriver, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", configs.DBUser, configs.DBPassword, configs.DBHost, configs.DBPort, configs.DBName))
+	db, err := db_connection.ConnectDB(config)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
+
+	// Run migrations
+	migrations.CreateOrdersTable(db)
+	migrations.InsertSampleData(db)
 
 	rabbitMQChannel := getRabbitMQChannel()
 
@@ -45,11 +50,11 @@ func main() {
 	createOrderUseCase := NewCreateOrderUseCase(db, eventDispatcher)
 	listOrdersUseCase := NewListOrdersUseCase(db)
 
-	webServer := webserver.NewWebServer(configs.WebServerPort)
+	webServer := webserver.NewWebServer(config.WebServerPort)
 	webOrderHandler := NewWebOrderHandler(db, eventDispatcher)
 	webServer.AddHandler("/order", webOrderHandler.Create)
 	webServer.AddHandler("/order", webOrderHandler.List)
-	fmt.Println("Starting web server on port", configs.WebServerPort)
+	fmt.Println("Starting web server on port", config.WebServerPort)
 	go webServer.Start()
 
 	grpcServer := grpc.NewServer()
@@ -57,8 +62,8 @@ func main() {
 	pb.RegisterOrderServiceServer(grpcServer, createOrderService)
 	reflection.Register(grpcServer)
 
-	fmt.Println("Starting gRPC server on port", configs.GRPCServerPort)
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", configs.GRPCServerPort))
+	fmt.Println("Starting gRPC server on port", config.GRPCServerPort)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", config.GRPCServerPort))
 	if err != nil {
 		panic(err)
 	}
@@ -71,8 +76,8 @@ func main() {
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 
-	fmt.Println("Starting GraphQL server on port", configs.GraphQLServerPort)
-	http.ListenAndServe(":"+configs.GraphQLServerPort, nil)
+	fmt.Println("Starting GraphQL server on port", config.GraphQLServerPort)
+	http.ListenAndServe(":"+config.GraphQLServerPort, nil)
 }
 
 func getRabbitMQChannel() *amqp.Channel {
